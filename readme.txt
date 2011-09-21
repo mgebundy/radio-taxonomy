@@ -3,8 +3,8 @@ Contributors: mitchbundy
 Donate link: http://www.bundy.ca/contact
 Tags: developer, taxonomies, ui
 Requires at least: 3.0
-Tested up to: 3.2
-Stable tag: 0.1
+Tested up to: 3.2.1
+Stable tag: 0.2
 
 No more checkboxes, let's radio in.
 
@@ -29,3 +29,15 @@ Coming Soon
 1. Upload the entire `radio-taxonomy` folder to the `/wp-content/plugins/` directory.
 1. Activate the plugin through the 'Plugins' menu in WordPress.
 1. Any post type you wish to have radio buttons set the "show_ui" option to "radio"
+
+== Changelog ==
+
+= 0.2 =
+* Sidemenu now appears
+* Metabox id consistent with old checkbox style metabox id
+* New 'radio-taxonomy_box_after' action
+
+== Upgrade Notice ==
+
+= 0.2 =
+You can now be able to manage all your taxonomies like normal!

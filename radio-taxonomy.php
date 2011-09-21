@@ -3,7 +3,7 @@
 Plugin Name: Radio Taxonomy
 Plugin URI: http://www.bundy.ca/radio-taxonomy
 Description: Make your taxonomies into radio buttons. Easy!
-Version: 0.1
+Version: 0.2
 Author: Mitchell Bundy
 Author URI: http://www.bundy.ca/
 */
@@ -41,25 +41,60 @@ class RadioTaxonomyMB {
 		global $wp_taxonomies;
 		$this->taxonomies = get_taxonomies(array('show_ui' => 'radio'), 'objects');
 		
-		// Now that we know which taxonomies we're dealing with, let's set show_ui to false so that we can use our own!
+		// Now that we know which taxonomies we're dealing with, let's set show_ui to true and remove the meta box.
 		foreach ($this->taxonomies as $tax) {
-			$wp_taxonomies[$tax->name]->show_ui = false;
+			$wp_taxonomies[$tax->name]->show_ui = true;
+			// Default show_none to false
+			if (!isset($wp_taxonomies[$tax->name]->show_none)) $wp_taxonomies[$tax->name]->show_none = false;
 		}
 	}
-	
+		
 	function meta_box($post, $metabox) {
 		do_action('radio-taxonomy_box');
-		echo '<div class="inside">
-		<ul class="categorychecklist">';
-		// show_none set? This doesn't do much but show a radio button
-		// TODO : actually have this checked when no term is selected
-		if ($this->taxonomies[$metabox['args']['taxonomy']]->show_none) {
-			echo '<li><label class="selectit"><input value="" type="radio" name="tax_input['.$metabox['args']['taxonomy'].'][]"'.(apply_filters('radio-taxonomy_none-checked', false, $metabox) ? ' checked="checked"' : '').'> ';
-			echo apply_filters('radio-taxonomy_none-text', __('None'), $metabox);
-			echo '</label></li>';
-		}
-		$this->category_radio_list($post->ID,$metabox['args']['taxonomy']);
-		echo '</ul></div>';
+		$tax = $metabox['args']['taxonomy'];?>
+		<div id="taxonomy-<?php echo $tax->name ?>" class="categorydiv">
+            <div class="inside">
+                <div id="<?php echo $tax->name; ?>-all">
+                    <ul id="<?php echo $tax->name; ?>checklist" class="list:<?php echo $tax->name?> categorychecklist form-no-clear"><?php
+                    // show_none set? This doesn't do much but show a radio button
+                    // TODO : actually have this checked when no term is selected
+                    if ($tax->show_none) {
+                        echo '<li><label class="selectit"><input value="" type="radio" name="tax_input['.$tax->name.'][]"'.(apply_filters('radio-taxonomy_none-checked', false, $metabox) ? ' checked="checked"' : '').'> ';
+                        echo apply_filters('radio-taxonomy_none-text', __('None', 'radio-taxonomy'), $metabox);
+                        echo '</label></li>';
+                    }
+                    $this->category_radio_list($post->ID, $tax->name);
+                    ?>
+                    </ul>
+                </div>
+            </div><?php
+		/*if ( current_user_can($tax->cap->edit_terms) ) :
+			?><div id="<?php echo $tax->name; ?>-adder" class="wp-hidden-children">
+            <h4>
+                <a id="<?php echo $tax->name; ?>-add-toggle" href="#<?php echo $tax->name; ?>-add" class="hide-if-no-js" tabindex="3">
+                    <?php
+                        /* translators: %s: add new taxonomy label *\/
+                        printf( __( '+ %s' ), $tax->labels->add_new_item );
+                    ?>
+                </a>
+            </h4>
+            <p id="<?php echo $tax->name; ?>-add" class="category-add wp-hidden-child">
+                <label class="screen-reader-text" for="new<?php echo $tax->name; ?>"><?php echo $tax->labels->add_new_item; ?></label>
+                <input type="text" name="new<?php echo $tax->name; ?>" id="new<?php echo $tax->name; ?>" class="form-required form-input-tip" value="<?php echo esc_attr( $tax->labels->new_item_name ); ?>" tabindex="3" aria-required="true"/>
+                <label class="screen-reader-text" for="new<?php echo $tax->name; ?>_parent">
+                    <?php echo $tax->labels->parent_item_colon; ?>
+                </label>
+                <?php //wp_dropdown_categories( array( 'taxonomy' => $tax->name, 'hide_empty' => 0, 'name' => 'new'.$tax->name.'_parent', 'orderby' => 'name', 'hierarchical' => 1, 'show_option_none' => '&mdash; ' . $tax->labels->parent_item . ' &mdash;', 'tab_index' => 3 ) ); ?>
+                <input type="button" id="<?php echo $tax->name; ?>-add-submit" class="add:<?php echo $tax->name ?>checklist:<?php echo $tax->name ?>-add button category-add-sumbit" value="<?php echo esc_attr( $tax->labels->add_new_item ); ?>" tabindex="3" />
+                <?php wp_nonce_field( 'add-'.$tax->name, '_ajax_nonce-add-'.$tax->name, false ); ?>
+                <span id="<?php echo $tax->name; ?>-ajax-response"></span>
+            </p>
+            </div>
+            <?php
+		endif; */ ?>
+        </div>
+		<?php
+		do_action('radio-taxonomy_box_after');
 	}
 	
 	function category_radio_list($post_id, $taxonomy) {
@@ -67,17 +102,21 @@ class RadioTaxonomyMB {
 	}
 	
 	function meta_boxes() {
-		// Create the new meta boxes
+		// Remove and create the new meta boxes
 		foreach ($this->taxonomies as $tax) {
 			foreach ($tax->object_type as $post_type) {
+				// Remove the old meta box
+				remove_meta_box($tax->name.'div', $post_type, 'side');
+				
+				// Add the new meta box
 				add_meta_box(
-					$tax->name.'-div', // id of the <div> we'll add
+					$tax->name.'div', // id of the meta box, use the same as the old one we just removed.
 					$tax->labels->singular_name, //title
 					array(&$this,'meta_box'), // callback function that will echo the box content
 					$post_type, // where to add the box: on "post", "page", or "link" page
 					'side',
 					'low',
-					array('taxonomy' => $tax->name, 'post_type' => $post_type)
+					array('taxonomy' => $tax, 'post_type' => $post_type)
 				);
 			}
 		}
